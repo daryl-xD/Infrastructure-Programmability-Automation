@@ -1,0 +1,9 @@
+[Unit]
+Description=Run backup job every 5 minutes
+
+[Timer]
+OnUnitActiveSec=5m
+Unit=backup_dns.service
+
+[Install]
+WantedBy=timers.target

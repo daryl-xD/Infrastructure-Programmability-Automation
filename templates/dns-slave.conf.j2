@@ -1,0 +1,15 @@
+zone "{{ domain }}" IN {
+    type slave;
+    masterfile-format text;
+    file "/etc/bind/db.{{ domain }}";
+    masters { {{ master_ip }}; };
+    allow-transfer { {{master_ip}}; };
+};
+
+
+zone "0.22.10.in-addr.arpa" IN {
+type slave;
+file "/etc/bind/db.192";
+primaries { {{master_ip}}; };
+allow-transfer { {{master_ip}}; };
+};

@@ -1,0 +1,15 @@
+$TTL 86400
+@ IN SOA ns1.{{domain}}. hostmaster.{{domain}}. (
+		1	; Serial
+		3h	; Refresh
+		1h	; rtime to retry
+		1w	; Expire
+		1h )	; Negative caching TTL 
+
+
+{{domain}}.	IN NS	ns1.{{domain}}.
+ns1		IN A	{{master_ip}}
+intranet	IN A	10.22.0.51
+{% for k, v in my_dict.items() %}
+{{k}}	IN A	{{v}}
+{%endfor%}

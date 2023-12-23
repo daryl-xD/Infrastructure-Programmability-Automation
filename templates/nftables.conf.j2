@@ -1,0 +1,35 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+        set trusted {
+                type ipv4_addr;
+                flags interval;
+                elements = { {% for ip in trusted_ips %}{{ ip }} {% if not loop.last %},{% endif %} {% endfor %} }
+        }
+
+
+        # Drop incoming packets by default
+
+chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Allow loopback traffic
+        iifname "lo" accept
+
+        # Allow SSH and ICMP traffic from members of the "trusted" list
+        ip saddr != @trusted tcp dport 22 counter drop comment "drop SSH from untrusted IPv4 clients"
+        ip saddr != @trusted ip protocol icmp counter drop comment "drop ICMPv4 from untrusted clients"  
+
+        # Allow established and related connections
+        ct state established,related accept
+        ct state new accept
+              
+}
+}
+
+
+
+
+                            

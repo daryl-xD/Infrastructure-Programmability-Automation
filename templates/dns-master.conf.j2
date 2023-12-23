@@ -1,0 +1,10 @@
+
+zone "{{ domain }}" IN {
+    type master;
+    file "/etc/bind/db.{{ domain }}";
+};
+
+zone "0.22.10.in-addr.arpa" IN {
+    type master;
+    file "/etc/bind/db.0.22.10";
+};

@@ -1,0 +1,5 @@
+domain {{domain}}
+search {{domain}}
+{% for ns in nameservers %}
+nameserver {{ns}}
+{%endfor%}

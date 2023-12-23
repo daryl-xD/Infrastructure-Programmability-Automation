@@ -1,0 +1,17 @@
+Listen {{ansible_host}}:{{webport}}
+Listen {{ansible_host}}:8081
+ServerName localhost
+
+<VirtualHost *:8081 >
+    
+    ServerName intranet.applix.com
+    DocumentRoot /var/www/html/intranet
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+    <Directory /var/www/html/intranet>
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>

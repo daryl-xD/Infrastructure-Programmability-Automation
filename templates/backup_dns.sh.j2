@@ -1,0 +1,8 @@
+#!/bin/bash
+
+BACKUP_DIR="/backups"
+DATE=$(date +"%Y-%m-%d_%H-%M-%S")
+HOSTNAME={{hostname}}
+{% for ip in list_host_ip %}
+rsync -az -e "ssh -i $HOME/.ssh/id_rsa" --delete /etc/bind/named.conf.local root@{{ ip }}:$BACKUP_DIR/$DATE\_$HOSTNAME.tar.gz
+{% endfor %}

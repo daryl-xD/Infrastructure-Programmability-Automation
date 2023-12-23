@@ -1,0 +1,7 @@
+[Unit]
+Description=Backup DNS service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/bash /usr/local/bin/backup_dns.sh
