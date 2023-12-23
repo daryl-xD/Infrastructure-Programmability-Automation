@@ -1,17 +1,19 @@
 ---
 - hosts: nfs
-  remote_user: ansible
+  remote_user: root
   become: yes
-  vars:
-    shares:
-      - name: share1
-        size: 1G
-      - name: share2
-        size: 500M
+
   tasks:
+
+    - name: Install NFS service
+      package:
+        name: nfs-kernel-server
+        state: present
+      when: inventory_hostname in groups['nfs']
+
     - name: Create logical volumes for NFS shares
       lvol:
-        vg: nfs
+        vg: debian-vg
         lv: "{{ item.name }}"
         size: "{{ item.size }}"
       loop: "{{ shares }}"
@@ -19,13 +21,18 @@
     - name: Format logical volumes for NFS shares
       filesystem:
         fstype: ext4
-        dev: "/dev/nfs/{{ item.name }}"
+        dev: "/dev/debian-vg/{{ item.name }}"
       loop: "{{ shares }}"
+
+    - name: Create NFS directory
+      file:
+        path: /dev/debian-vg/nfs
+        state: directory
 
     - name: Mount NFS shares
       mount:
         path: "/nfs/{{ item.name }}"
-        src: "/dev/nfs/{{ item.name }}"
+        src: "/dev/debian-vg/{{ item.name }}"
         fstype: ext4
         state: mounted
       loop: "{{ shares }}"
@@ -37,5 +44,5 @@
       loop: "{{ shares }}"
       vars:
         share_name: "{{ item.name }}"
-        host: "APPLIX-LINUXHOST-001"
+        host: "10.22.0.50"
 

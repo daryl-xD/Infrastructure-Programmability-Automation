@@ -1,6 +1,6 @@
 ---
 - hosts: web
-  remote_user: ansible
+  remote_user: root
   become: yes
   vars:
   tasks:
@@ -20,6 +20,20 @@
         hostname: "{{ ansible_hostname }}"
       register: results_index
 
+    - name: create intranet directory
+      file: 
+        path: /var/www/html/intranet
+        state: directory
+        mode: 0755
+
+    - name: Configure intranet website
+      template:
+        src: index_intranet.html.j2
+        dest: /var/www/html/intranet/index.html
+      vars:
+        hostname: "{{ ansible_hostname }}"
+      register: results_index2
+
     - name: Enable virtual host
       template:
         src: virtualhost.conf.j2
@@ -32,4 +46,4 @@
       service:
         name: apache2
         state: restarted
-      when: (results_index.changed) and (results_vhost.changed)
+      when: (results_index.changed) or (results_vhost.changed) or (results_index2.changed)

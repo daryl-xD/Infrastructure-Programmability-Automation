@@ -1,18 +1,20 @@
 ---
 - hosts: dns:all
-  remote_user: ansible
+  remote_user: root
   become: yes
   vars:
     domain: applix.com
     master_ip: "{{ groups['dns'] | map('extract', hostvars, 'ansible_host') | first }}"
-    list_host: "{{ groups['all'] | map('extract', hostvars, 'hostname') | list }}"
     list_ip: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list }}"
+    slave_dns: "{{ groups['dns'] | difference([groups['dns'] | first] ) }}"
+    list_all_hosts: "{{ groups['all'] | map('extract', hostvars, 'hostname') | list }}"
   tasks:
 
     - name: Create a dictionary from two lists
       set_fact:
-        my_dict: "{{ dict(list_host | zip(list_ip)) }}"
-
+        my_dict: "{{ dict(list_all_hosts | zip(list_ip)) }}"
+      run_once: yes
+    
     - name: Install DNS service
       package:
         name: bind9
@@ -25,6 +27,13 @@
         dest: /etc/bind/named.conf.local
       when: inventory_hostname == groups['dns'] | first
 
+    - name: Zone reverse
+      template: 
+        src: db-conf-reverse.local.j2
+        dest: /etc/bind/db.192
+      when: inventory_hostname in groups['dns']
+
+
     - name: Configure db file for zone
       template:
         src: db-dns-conf.j2
@@ -35,12 +44,12 @@
       template:
         src: dns-slave.conf.j2
         dest: /etc/bind/named.conf.local
-      when: inventory_hostname != groups['dns'] | first 
+      when: inventory_hostname in slave_dns
 
     - name: Restart DNS service
       service:
         name: bind9
         state: restarted
-
+      when: inventory_hostname in groups['dns']
 
 

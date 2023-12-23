@@ -1,6 +1,6 @@
 ---
 - hosts: linux
-  remote_user: ansible
+  remote_user: root
   become: yes
   tasks:
     - name: Set hostname
@@ -8,12 +8,6 @@
         name: "{{ hostname }}"
         use: 'systemd' 
       register: hostname_result
-
-    
-    - name: debug var
-      debug:
-        msg: 'hostname: {{hostname_result}}'
-
 
     - name: Update hostname in /etc/hosts
       lineinfile:

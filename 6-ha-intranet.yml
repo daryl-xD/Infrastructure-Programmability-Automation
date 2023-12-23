@@ -1,25 +1,46 @@
 ---
 - hosts: ha
-  remote_user: ansible
+  remote_user: root
   become: yes
   vars:
     floating_ip: "{{ groups['ha'] | map('extract', hostvars, 'hostname') | first }}"
-    vrrp_password: secret
+    #vrrp_password: secret # put that variable in group_vars/ha, have to vault it. ansible-vault encrypt vault_ha.yml
     haproxy_host: "{{ groups['ha'] }}"
-    vip: 
-      - "{{groups['ha'] | last}}"
-    vip2: "{{ groups['ha'] | symmetric_difference(vip) | length - 1}}"
-    vip3: "{{groups['ha'][1]}}"
+    vrrp: "{{groups['ha'] | last}}"
+    vip_ip: 10.22.0.51
     list_host: "{{ groups['ha'] | map('extract', hostvars, 'hostname') | list }}"
     list_ip: "{{ groups['ha'] | map('extract', hostvars, 'ansible_host') | list }}"
-
+    list_web: "{{ groups['web'] | map('extract', hostvars, 'hostname') | list }}"
+    list_webip: "{{ groups['web'] | map('extract', hostvars, 'ansible_host') | list }}"
+    Priority: "{{ [100, 90, 80, 70, 60] }}"
 
 
   tasks:
+    - include_vars:
+        file: vrrp_vault.yml
+        name: vrrp_vault
+    - set_fact:
+        vrrp_password: "{{ vrrp_vault.password }}"
 
     - name: Create a dictionary from two lists
       set_fact:
         my_dict: "{{ dict(list_host | zip(list_ip)) }}"
+      run_once: yes
+
+    - name: set state
+      set_fact: 
+        state: MASTER
+      when: inventory_hostname == vrrp
+     
+    - name: set priority to host
+      set_fact:
+        dict_priority: "{{ dict(list_host | reverse | zip(Priority)) }}"
+      run_once: yes
+      
+    - name: Create another dictionary from two lists (web servers)
+      set_fact:
+        web_dict: "{{ dict(list_web | zip(list_webip)) }}"
+      run_once: yes
 
     - name: Install Keepalived and HAProxy
       package:
@@ -27,6 +48,7 @@
           - keepalived
           - haproxy
         state: present
+      
 
     - name: Configure Keepalived
       template:
@@ -35,12 +57,17 @@
       notify:
         - restart keepalived
 
+    - name: Enable non-local binding
+      command: sysctl -w net.ipv4.ip_nonlocal_bind=1
+      when: inventory_hostname == vrrp
+
     - name: Configure HAProxy
       template:
         src: haproxy.cfg.j2
         dest: /etc/haproxy/haproxy.cfg
       notify:
         - restart haproxy
+      when: inventory_hostname == vrrp
 
   handlers:
     - name: restart keepalived
@@ -51,3 +78,4 @@
       service:
         name: haproxy
         state: restarted
+

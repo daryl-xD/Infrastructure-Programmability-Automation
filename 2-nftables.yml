@@ -4,8 +4,9 @@
   become: true
   vars:
     trusted_ips:
-      - "{{ groups['dev'] | map('extract', hostvars, 'ansible_host') | list }}"
-      # add HOST ip. 
+      - 10.22.0.50
+      - 10.22.0.251
+      - 10.22.0.252
 
   tasks:
 
@@ -27,8 +28,6 @@
         name: nftables
         state: started
         enabled: yes
-
-
 
     - name: Apply nftables configuration
       command: nft -f /etc/nftables.conf

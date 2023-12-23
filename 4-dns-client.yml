@@ -1,33 +1,35 @@
 ---
-- hosts: linux
-  remote_user: ansible
+- hosts: linux:localhost
+  remote_user: root
   become: yes
   vars:
+    domain : applix.com
     primary_dns: 
       - "{{groups['dns'] | first}}"
-    secondary_dns: "{{ groups['dns'] | symmetric_difference(primary_dns)}}"
+    list_primary_dns: "{{[groups['dns'] | first] | map('extract', hostvars, 'ansible_host') | list }}"
+    secondary_dns: "{{ groups['dns'] | symmetric_difference(primary_dns) |  map('extract', hostvars, 'ansible_host') | list }}"
+    nameservers: "{{groups['dns'] | map('extract', hostvars, 'ansible_host') | list }}"
     dns_suffix: applix.com
   tasks:
-    - name: Set primary DNS server
-      lineinfile:
-        path: /etc/resolv.conf
-        regexp: "^nameserver .*"
-        line: "nameserver {{ item }}"
-      with_items: "{{ primary_dns }}"
-      notify:
-        - restart network
-    - name: Set secondary DNS servers
-      lineinfile:
-        path: /etc/resolv.conf
-        regexp: "^nameserver .*"
-        line: "nameserver {{ item }}"
-        insertafter: EOF
-      with_items: "{{ secondary_dns }}"
-      notify:
-        - restart network
 
-  handlers:
-    - name: restart network
-      service:
-        name: NetworkManager
-        state: restarted
+    - name: set NetworkManager not to configure resolv.conf
+      ansible.builtin.file:
+        path: /etc/NetworkManager/conf.d/
+        state: directory
+        mode: '0755'
+      when: inventory_hostname in groups['dns']
+
+    - name: set NetworkManager config file
+      template: 
+        src: 90-dns-none.conf.j2
+        dest: /etc/NetworkManager/conf.d/90-dns-none.conf
+      when: inventory_hostname in groups['dns']
+
+    - name: Set primary and secondary DNS servers
+      template:
+        src: resolv.conf.j2
+        dest: /etc/resolv.conf
+
+
+
+
