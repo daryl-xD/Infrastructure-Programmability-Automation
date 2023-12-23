@@ -1,0 +1,46 @@
+---
+- hosts: dns:all
+  remote_user: ansible
+  become: yes
+  vars:
+    domain: applix.com
+    master_ip: "{{ groups['dns'] | map('extract', hostvars, 'ansible_host') | first }}"
+    list_host: "{{ groups['all'] | map('extract', hostvars, 'hostname') | list }}"
+    list_ip: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | list }}"
+  tasks:
+
+    - name: Create a dictionary from two lists
+      set_fact:
+        my_dict: "{{ dict(list_host | zip(list_ip)) }}"
+
+    - name: Install DNS service
+      package:
+        name: bind9
+        state: present
+      when: inventory_hostname in groups['dns']
+
+    - name: Configure DNS master
+      template:
+        src: dns-master.conf.j2
+        dest: /etc/bind/named.conf.local
+      when: inventory_hostname == groups['dns'] | first
+
+    - name: Configure db file for zone
+      template:
+        src: db-dns-conf.j2
+        dest: /etc/bind/db.{{ domain }}
+      when: inventory_hostname in groups['dns']
+
+    - name: Configure DNS slave
+      template:
+        src: dns-slave.conf.j2
+        dest: /etc/bind/named.conf.local
+      when: inventory_hostname != groups['dns'] | first 
+
+    - name: Restart DNS service
+      service:
+        name: bind9
+        state: restarted
+
+
+

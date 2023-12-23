@@ -1,0 +1,41 @@
+---
+- hosts: nfs
+  remote_user: ansible
+  become: yes
+  vars:
+    shares:
+      - name: share1
+        size: 1G
+      - name: share2
+        size: 500M
+  tasks:
+    - name: Create logical volumes for NFS shares
+      lvol:
+        vg: nfs
+        lv: "{{ item.name }}"
+        size: "{{ item.size }}"
+      loop: "{{ shares }}"
+
+    - name: Format logical volumes for NFS shares
+      filesystem:
+        fstype: ext4
+        dev: "/dev/nfs/{{ item.name }}"
+      loop: "{{ shares }}"
+
+    - name: Mount NFS shares
+      mount:
+        path: "/nfs/{{ item.name }}"
+        src: "/dev/nfs/{{ item.name }}"
+        fstype: ext4
+        state: mounted
+      loop: "{{ shares }}"
+
+    - name: Create exports file for NFS shares
+      template:
+        src: exports.j2
+        dest: /etc/exports
+      loop: "{{ shares }}"
+      vars:
+        share_name: "{{ item.name }}"
+        host: "APPLIX-LINUXHOST-001"
+

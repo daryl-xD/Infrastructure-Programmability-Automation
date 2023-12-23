@@ -1,0 +1,33 @@
+---
+- hosts: linux
+  remote_user: ansible
+  become: yes
+  vars:
+    primary_dns: 
+      - "{{groups['dns'] | first}}"
+    secondary_dns: "{{ groups['dns'] | symmetric_difference(primary_dns)}}"
+    dns_suffix: applix.com
+  tasks:
+    - name: Set primary DNS server
+      lineinfile:
+        path: /etc/resolv.conf
+        regexp: "^nameserver .*"
+        line: "nameserver {{ item }}"
+      with_items: "{{ primary_dns }}"
+      notify:
+        - restart network
+    - name: Set secondary DNS servers
+      lineinfile:
+        path: /etc/resolv.conf
+        regexp: "^nameserver .*"
+        line: "nameserver {{ item }}"
+        insertafter: EOF
+      with_items: "{{ secondary_dns }}"
+      notify:
+        - restart network
+
+  handlers:
+    - name: restart network
+      service:
+        name: NetworkManager
+        state: restarted

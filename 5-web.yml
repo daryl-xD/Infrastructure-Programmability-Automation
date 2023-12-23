@@ -1,0 +1,35 @@
+---
+- hosts: web
+  remote_user: ansible
+  become: yes
+  vars:
+  tasks:
+    - name: Install web service
+      package:
+        name: apache2
+        state: present
+    - name: debug
+      debug: 
+        msg: '{{webcolor}}'
+
+    - name: Configure local website
+      template:
+        src: index.html.j2
+        dest: /var/www/html/index.html
+      vars:
+        hostname: "{{ ansible_hostname }}"
+      register: results_index
+
+    - name: Enable virtual host
+      template:
+        src: virtualhost.conf.j2
+        dest: /etc/apache2/sites-enabled/intranet.applix.com.conf
+      vars:
+        hostname: "{{ ansible_hostname }}"
+      register: results_vhost
+
+    - name: Restart web service
+      service:
+        name: apache2
+        state: restarted
+      when: (results_index.changed) and (results_vhost.changed)

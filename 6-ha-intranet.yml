@@ -1,0 +1,53 @@
+---
+- hosts: ha
+  remote_user: ansible
+  become: yes
+  vars:
+    floating_ip: "{{ groups['ha'] | map('extract', hostvars, 'hostname') | first }}"
+    vrrp_password: secret
+    haproxy_host: "{{ groups['ha'] }}"
+    vip: 
+      - "{{groups['ha'] | last}}"
+    vip2: "{{ groups['ha'] | symmetric_difference(vip) | length - 1}}"
+    vip3: "{{groups['ha'][1]}}"
+    list_host: "{{ groups['ha'] | map('extract', hostvars, 'hostname') | list }}"
+    list_ip: "{{ groups['ha'] | map('extract', hostvars, 'ansible_host') | list }}"
+
+
+
+  tasks:
+
+    - name: Create a dictionary from two lists
+      set_fact:
+        my_dict: "{{ dict(list_host | zip(list_ip)) }}"
+
+    - name: Install Keepalived and HAProxy
+      package:
+        name:
+          - keepalived
+          - haproxy
+        state: present
+
+    - name: Configure Keepalived
+      template:
+        src: keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+      notify:
+        - restart keepalived
+
+    - name: Configure HAProxy
+      template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+      notify:
+        - restart haproxy
+
+  handlers:
+    - name: restart keepalived
+      service:
+        name: keepalived
+        state: restarted
+    - name: restart haproxy
+      service:
+        name: haproxy
+        state: restarted

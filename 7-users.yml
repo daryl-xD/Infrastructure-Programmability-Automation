@@ -1,0 +1,28 @@
+---
+- hosts: linux
+  remote_user: ansible
+  become: yes
+  tasks:
+
+
+    - name: Read users from CSV file and return a list
+      community.general.read_csv:
+        path: users.csv
+        fieldnames: uid,username,password,home
+        delimiter: ';'
+      register: users
+      delegate_to: localhost
+
+    - name: debug
+      debug:
+        msg: '{{users}}'
+
+    - name: Import users from CSV file
+      user:
+        name: "{{ item.username }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        uid: "{{ item.uid }}"
+        update_password: on_create
+      with_items:
+        - '{{users.list}}'
+        

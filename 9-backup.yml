@@ -1,0 +1,53 @@
+---
+- hosts: dns:backup
+  remote_user: ansible
+  become: yes
+  vars: 
+    list_host_ip: "{{ groups['backup'] | map('extract', hostvars, 'ansible_host') | list }}"
+  tasks:
+    - name: Install rsync package
+      package:
+        name: rsync
+        state: present
+
+    - name: create backup directory of not exist
+      file:
+        path: /backups
+        state: directory
+        mode: '0777'
+
+    - name: Create backup script
+      template:
+        src: backup_dns.sh.j2
+        dest: /usr/local/bin/backup_dns.sh
+        mode: 0755
+      when: inventory_hostname in groups['dns']
+
+    - name: Create systemd service
+      template:
+        src: backup_dns.service.j2
+        dest: /etc/systemd/system/backup_dns.service
+      when: inventory_hostname in groups['dns']
+      notify:
+        - Reload systemd daemon
+
+    - name: Create systemd timer
+      template:
+        src: backup_dns.timer.j2
+        dest: /etc/systemd/system/backup_dns.timer
+      when: inventory_hostname in groups['dns']
+      notify:
+        - Reload systemd daemon
+
+    - name: Enable and start timer
+      systemd:
+        name: backup_dns.timer
+        state: started
+        enabled: yes
+      when: inventory_hostname in groups['dns']
+    
+  handlers:
+    - name: Reload systemd daemon
+      service:
+        name: daemon
+        state: restarted

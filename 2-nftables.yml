@@ -1,0 +1,46 @@
+---
+
+- hosts: linux
+  become: true
+  vars:
+    trusted_ips:
+      - "{{ groups['dev'] | map('extract', hostvars, 'ansible_host') | list }}"
+      # add HOST ip. 
+
+  tasks:
+
+    - name: Install nftables 
+      apt:
+        name:
+          - nftables
+        state: present
+
+    - name: Generate nftables configuration file
+      template:
+        src: nftables.conf.j2
+        dest: /etc/nftables.conf
+      tags:
+        - nftables
+
+    - name: start the service and enable it
+      systemd: 
+        name: nftables
+        state: started
+        enabled: yes
+
+
+
+    - name: Apply nftables configuration
+      command: nft -f /etc/nftables.conf
+      tags:
+        - nftables
+      register: nftablesconf
+
+    - name: Restart nftables service
+      service:
+        name: nftables
+        state: restarted
+      when: nftablesconf.changed
+      tags:
+        - nftables
+
