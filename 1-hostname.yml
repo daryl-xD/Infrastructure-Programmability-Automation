@@ -1,0 +1,31 @@
+---
+- hosts: linux
+  remote_user: ansible
+  become: yes
+  tasks:
+    - name: Set hostname
+      hostname:
+        name: "{{ hostname }}"
+        use: 'systemd' 
+      register: hostname_result
+
+    
+    - name: debug var
+      debug:
+        msg: 'hostname: {{hostname_result}}'
+
+
+    - name: Update hostname in /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127.0.0.1.*'
+        line: '127.0.0.1 {{ hostname }}'
+      when: hostname_result.changed
+
+
+    - name: Update hostname in /etc/hostname
+      lineinfile:
+        path: /etc/hostname
+        line: "{{ hostname }}"
+      when: hostname_result.changed
+
